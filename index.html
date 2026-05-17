@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>W-Trek · Patagonia · Interactive Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="styles.css">
+<template id="__bundler_thumbnail" data-bg-color="#f4ecdc">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <!-- sky -->
+    <rect width="1200" height="800" fill="#f4ecdc" />
+    <!-- sun -->
+    <circle cx="860" cy="260" r="80" fill="#d4a857" />
+    <!-- back ridge -->
+    <path d="M 0 620 L 220 360 L 380 500 L 580 240 L 800 460 L 1010 380 L 1200 420 L 1200 800 L 0 800 Z" fill="#5a7a5e" opacity="0.4" />
+    <!-- mid ridge -->
+    <path d="M 0 700 L 180 480 L 360 620 L 540 380 L 740 580 L 960 480 L 1200 540 L 1200 800 L 0 800 Z" fill="#3d5a40" opacity="0.7" />
+    <!-- W foreground peaks -->
+    <path d="M 40 760 L 280 380 L 460 620 L 620 280 L 780 580 L 1020 360 L 1180 760 L 1200 800 L 0 800 Z" fill="#2a3e2d" />
+    <!-- snow caps -->
+    <path d="M 280 380 L 320 440 L 240 440 Z" fill="#f4ecdc" />
+    <path d="M 620 280 L 680 360 L 560 360 Z" fill="#f4ecdc" />
+    <path d="M 1020 360 L 1070 420 L 970 420 Z" fill="#f4ecdc" />
+    <!-- W label -->
+    <text x="600" y="160" text-anchor="middle" font-family="Georgia, serif" font-size="120" font-style="italic" fill="#2a3e2d">W</text>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data-helpers.jsx"></script>
+<script type="text/babel" src="map-view.jsx"></script>
+<script type="text/babel" src="elevation.jsx"></script>
+<script type="text/babel" src="panel.jsx"></script>
+<script type="text/babel" src="mobile.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "palette": "poster",
+  "showElevation": true,
+  "showHero": false,
+  "units": "imperial"
+}/*EDITMODE-END*/;
+
+const PALETTES = {
+  earthy: {
+    "--paper": "oklch(0.955 0.012 75)",
+    "--paper-deep": "oklch(0.915 0.022 78)",
+    "--paper-edge": "oklch(0.86 0.028 75)",
+    "--ink": "oklch(0.22 0.018 60)",
+    "--forest": "oklch(0.42 0.085 145)",
+    "--forest-deep": "oklch(0.30 0.075 145)",
+    "--terracotta": "oklch(0.58 0.135 45)",
+    "--terracotta-dp": "oklch(0.45 0.130 42)",
+    "--ochre": "oklch(0.74 0.115 75)",
+  },
+  alpine: {
+    "--paper": "oklch(0.965 0.008 230)",
+    "--paper-deep": "oklch(0.92 0.015 230)",
+    "--paper-edge": "oklch(0.85 0.020 230)",
+    "--ink": "oklch(0.20 0.025 250)",
+    "--forest": "oklch(0.50 0.075 220)",
+    "--forest-deep": "oklch(0.32 0.070 230)",
+    "--terracotta": "oklch(0.55 0.130 250)",
+    "--terracotta-dp": "oklch(0.40 0.125 250)",
+    "--ochre": "oklch(0.78 0.060 230)",
+  },
+  poster: {
+    "--paper": "oklch(0.95 0.020 90)",
+    "--paper-deep": "oklch(0.91 0.030 88)",
+    "--paper-edge": "oklch(0.82 0.040 88)",
+    "--ink": "oklch(0.20 0.030 30)",
+    "--forest": "oklch(0.45 0.105 155)",
+    "--forest-deep": "oklch(0.32 0.090 155)",
+    "--terracotta": "oklch(0.60 0.165 30)",
+    "--terracotta-dp": "oklch(0.42 0.150 30)",
+    "--ochre": "oklch(0.72 0.140 80)",
+  }
+};
+
+function applyPalette(name) {
+  const p = PALETTES[name] || PALETTES.earthy;
+  const root = document.documentElement;
+  Object.entries(p).forEach(([k, v]) => root.style.setProperty(k, v));
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const isMobile = useIsMobile();
+  const [sheetState, setSheetState] = useState("peek"); // peek | mid | full
+
+  const [activeDay, setActiveDay] = useState("all"); // "all" | 1-5
+  const [activeNode, setActiveNode] = useState(null);
+  const [activeSeg, setActiveSeg] = useState(null);
+  const [hoverSeg, setHoverSeg] = useState(null);
+  const [walkProgress, setWalkProgress] = useState(0);
+  const [photos, setPhotos] = useState({});
+  const [notes, setNotes] = useState({});
+  const [gearChecked, setGearChecked] = useState({});
+  const [editMode, setEditMode] = useState(false);
+  const [overrides, setOverrides] = useState(() => {
+    // Migration: baked the previous overrides into data.js, so reset stale storage to a clean slate
+    const BAKE_VERSION = 'baked-2026-05-12';
+    if (localStorage.getItem('wtrek-bake-version') !== BAKE_VERSION) {
+      localStorage.setItem('wtrek-bake-version', BAKE_VERSION);
+      localStorage.removeItem('wtrek-overrides-v2');
+      return { nodes: {} };
+    }
+    return loadOverrides();
+  });
+
+  const handleNodeMove = (id, lngLat) => {
+    setOverrides(prev => {
+      const next = { ...prev, nodes: { ...(prev.nodes || {}), [id]: lngLat } };
+      saveOverrides(next);
+      return next;
+    });
+  };
+  const handleResetOverrides = () => {
+    setOverrides({ nodes: {} });
+    saveOverrides({ nodes: {} });
+  };
+
+  useEffect(() => { applyPalette(t.palette); }, [t.palette]);
+
+  const handleNodeClick = (id) => {
+    const nextNode = id === activeNode ? null : id;
+    setActiveNode(nextNode);
+    setActiveSeg(null);
+    // On mobile, auto-raise the sheet to mid when a new selection is made
+    if (isMobile && nextNode && sheetState === "peek") setSheetState("mid");
+  };
+  const handleSegClick = (id) => {
+    const nextSeg = id === activeSeg ? null : id;
+    setActiveSeg(nextSeg);
+    setActiveNode(null);
+    const seg = D.segments.find(s => s.id === id);
+    if (seg) setActiveDay(seg.day);
+    if (isMobile && nextSeg && sheetState === "peek") setSheetState("mid");
+  };
+  const handleDayClick = (d) => {
+    setActiveDay(d);
+    setActiveNode(null);
+    setActiveSeg(null);
+    // jump walker to start of day
+    if (d !== "all") {
+      const totalHours = D.segments.reduce((s, x) => s + x.hours, 0);
+      let acc = 0;
+      for (const seg of D.segments) {
+        if (seg.day === d) { setWalkProgress(acc / totalHours); break; }
+        acc += seg.hours;
+      }
+    }
+  };
+
+  return (
+    <div className="app" data-sheet-state={isMobile ? sheetState : undefined}>
+      {isMobile && <MobileTopBar />}
+      <header className="header">
+        <div className="brand">
+          <svg className="brand-logo" viewBox="0 0 56 44" aria-hidden="true">
+            {/* sun */}
+            <circle cx="40" cy="14" r="5.2" className="logo-sun" />
+            {/* far back ridge */}
+            <path d="M 0 36 L 14 18 L 24 28 L 36 12 L 48 26 L 56 20 L 56 44 L 0 44 Z" className="logo-ridge-back" />
+            {/* mid ridge */}
+            <path d="M 0 40 L 10 26 L 20 36 L 30 22 L 42 34 L 56 28 L 56 44 L 0 44 Z" className="logo-ridge-mid" />
+            {/* foreground W-peaks */}
+            <path d="M 2 42 L 14 22 L 22 34 L 30 18 L 38 32 L 50 22 L 56 42 L 56 44 L 2 44 Z" className="logo-ridge-fore" />
+            {/* snow caps */}
+            <path d="M 14 22 L 16 25 L 12 25 Z" className="logo-snow" />
+            <path d="M 30 18 L 33 22 L 27 22 Z" className="logo-snow" />
+            <path d="M 50 22 L 52.5 25.5 L 47.5 25.5 Z" className="logo-snow" />
+          </svg>
+          <div className="brand-text">
+            <div className="brand-mark">The <em>W</em>‑Trek</div>
+            <div className="brand-meta">Torres del Paine · Dec 29 → Jan 2</div>
+          </div>
+        </div>
+        <div className="trip-stats">
+          <div className="stat">
+            <div className="stat-num">5<span className="stat-slash">/</span>4</div>
+            <div className="stat-lbl">days / nights</div>
+          </div>
+          <div className="stat">
+            <div className="stat-num">41<span className="stat-unit">mi</span></div>
+            <div className="stat-lbl">distance</div>
+          </div>
+          <div className="stat">
+            <div className="stat-num">7.8<span className="stat-unit">k</span></div>
+            <div className="stat-lbl">ft gain</div>
+          </div>
+        </div>
+      </header>
+
+      <MapView
+        activeDay={activeDay}
+        activeNode={activeNode}
+        activeSeg={activeSeg}
+        hoverSeg={hoverSeg}
+        walkProgress={walkProgress}
+        editMode={editMode}
+        overrides={overrides}
+        onNodeMove={handleNodeMove}
+        onNodeClick={handleNodeClick}
+        onSegClick={handleSegClick}
+        onSegHover={setHoverSeg}
+      />
+
+      {t.showElevation ? (
+        <ElevationStrip
+          activeDay={activeDay}
+          walkProgress={walkProgress}
+          onScrub={setWalkProgress}
+          onDayClick={handleDayClick}
+          show={true}
+        />
+      ) : (
+        <div className="scrub" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="day-chips">
+            <button className={`day-chip all ${activeDay === "all" ? "active" : ""}`} onClick={() => handleDayClick("all")}>All days</button>
+            {D.days.map(d => (
+              <button key={d.day} className={`day-chip ${activeDay === d.day ? "active" : ""}`} onClick={() => handleDayClick(d.day)}>
+                Day {d.day}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            Elevation hidden
+          </div>
+        </div>
+      )}
+
+      {t.showElevation && false && (
+        <div style={{ position: "absolute", bottom: 100, left: 24, right: 404, display: "flex", justifyContent: "flex-start", pointerEvents: "none" }}>
+          <div className="day-chips" style={{ pointerEvents: "auto", background: "oklch(0.955 0.012 75 / 0.85)", padding: 4, borderRadius: 100, backdropFilter: "blur(4px)", border: "1px solid var(--paper-edge)" }}>
+            <button className={`day-chip all ${activeDay === "all" ? "active" : ""}`} onClick={() => handleDayClick("all")}>All</button>
+            {D.days.map(d => (
+              <button key={d.day} className={`day-chip ${activeDay === d.day ? "active" : ""}`} onClick={() => handleDayClick(d.day)}>
+                D{d.day}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isMobile ? (
+        <MobileSheet
+          state={sheetState}
+          setState={setSheetState}
+          peek={<MobilePeek activeDay={activeDay} activeNode={activeNode} activeSeg={activeSeg} state={sheetState} />}
+        >
+          <Panel
+            activeNode={activeNode}
+            activeSeg={activeSeg}
+            activeDay={activeDay}
+            photos={photos} setPhotos={setPhotos}
+            notes={notes} setNotes={setNotes}
+            gearChecked={gearChecked} setGearChecked={setGearChecked}
+            onSegClick={handleSegClick}
+            onDayClick={(d) => { handleDayClick(d); if (sheetState === "peek") setSheetState("mid"); }}
+            onReset={(opts) => {
+              setActiveNode(null);
+              setActiveSeg(null);
+              if (!opts || !opts.keepDay) setActiveDay("all");
+            }}
+          />
+        </MobileSheet>
+      ) : (
+        <Panel
+          activeNode={activeNode}
+          activeSeg={activeSeg}
+          activeDay={activeDay}
+          photos={photos} setPhotos={setPhotos}
+          notes={notes} setNotes={setNotes}
+          gearChecked={gearChecked} setGearChecked={setGearChecked}
+          onSegClick={handleSegClick}
+          onDayClick={handleDayClick}
+          onReset={(opts) => {
+            setActiveNode(null);
+            setActiveSeg(null);
+            if (!opts || !opts.keepDay) setActiveDay("all");
+          }}
+        />
+      )}
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Palette">
+          <TweakRadio
+            value={t.palette}
+            onChange={v => setTweak('palette', v)}
+            options={[
+              { value: "earthy", label: "Earthy" },
+              { value: "alpine", label: "Alpine" },
+              { value: "poster", label: "Poster" },
+            ]}
+          />
+        </TweakSection>
+        <TweakSection title="Display">
+          <TweakToggle label="Elevation profile" value={t.showElevation} onChange={v => setTweak('showElevation', v)} />
+        </TweakSection>
+        <TweakSection title="Edit positions">
+          <TweakToggle label="Edit mode (drag camps)" value={editMode} onChange={setEditMode} />
+          <TweakButton label="Reset to defaults" onClick={handleResetOverrides} />
+          {Object.keys(overrides.nodes || {}).length > 0 && (
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-faint)", marginTop: 6, letterSpacing: "0.04em" }}>
+              {Object.keys(overrides.nodes).length} pin{Object.keys(overrides.nodes).length === 1 ? '' : 's'} moved
+            </div>
+          )}
+        </TweakSection>
+        <TweakSection title="Day focus">
+          <TweakSelect
+            value={String(activeDay)}
+            onChange={v => handleDayClick(v === "all" ? "all" : Number(v))}
+            options={[
+              { value: "all", label: "All days" },
+              { value: "1", label: "Day 1 · Arrival" },
+              { value: "2", label: "Day 2 · Towers Sunrise" },
+              { value: "3", label: "Day 3 · French Valley · NYE" },
+              { value: "4", label: "Day 4 · Glacier Grey" },
+              { value: "5", label: "Day 5 · Finale" },
+            ]}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
