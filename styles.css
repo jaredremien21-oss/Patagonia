@@ -1161,33 +1161,40 @@ om-tweaks-panel { z-index: 100; }
 
 /* ==========================================================================
    Mobile (≤ 768px)
-   - Map is the primary surface, full-bleed
-   - Compact floating top bar replaces the desktop header
-   - Right panel becomes a draggable bottom sheet (peek / mid / full)
-   - Elevation strip pins above the peek; hides when sheet rises
+   - Page becomes a vertical scroll: top bar / map / elevation / inline overview
+   - Detail pages (day, segment, node) open as a modal bottom sheet over the
+     map with a close button; tapping the close button or backdrop returns
+     the user to the homepage scroll position.
    ========================================================================== */
 @media (max-width: 768px) {
+  html, body {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+    overflow-x: hidden;
+  }
   body { font-size: 15px; }
 
-  /* === App grid: top bar over map === */
+  /* === App: scroll-friendly block flow (no fixed grid) === */
   .app {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      "topbar"
-      "map";
-    height: 100vh;
-    height: 100dvh;
+    display: block;
+    grid-template-columns: unset;
+    grid-template-rows: unset;
+    grid-template-areas: unset;
+    height: auto;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    z-index: auto;
   }
 
   /* Hide desktop chrome */
   .header { display: none !important; }
-  .panel { display: none !important; }
 
-  /* === Top bar === */
+  /* === Top bar (sticky, sits above everything below it) === */
   .m-topbar {
-    grid-area: topbar;
-    position: relative;
+    position: sticky;
+    top: 0;
     z-index: 30;
     display: flex;
     align-items: center;
@@ -1197,7 +1204,7 @@ om-tweaks-panel { z-index: 100; }
     padding-top: max(10px, env(safe-area-inset-top));
     padding-left: max(14px, env(safe-area-inset-left));
     padding-right: max(14px, env(safe-area-inset-right));
-    background: oklch(0.955 0.012 75 / 0.92);
+    background: oklch(0.955 0.012 75 / 0.94);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--paper-edge);
@@ -1273,174 +1280,166 @@ om-tweaks-panel { z-index: 100; }
     font-weight: 600;
   }
 
-  /* === Map fills === */
-  .map { grid-area: map; border-right: none; }
+  /* === Map: inline, primary surface, ~62% of viewport === */
+  .map {
+    grid-area: unset;
+    position: relative;
+    width: 100%;
+    height: 62vh;
+    height: 62dvh;
+    min-height: 360px;
+    border-right: none;
+    border-bottom: 1px solid var(--paper-edge);
+  }
   .leaflet-control-zoom { display: none !important; } /* rely on pinch */
 
-  /* Move legend out of the way of the sheet */
   .legend {
-    bottom: calc(110px + 96px + env(safe-area-inset-bottom));
-    right: 10px;
+    bottom: 14px;
+    right: 12px;
     font-size: 10px;
     max-width: 220px;
-    transition: bottom 0.32s cubic-bezier(0.32, 0.72, 0.18, 1), transform 0.32s, opacity 0.25s;
   }
   .legend-body { max-height: 220px; }
-  .app[data-sheet-state="mid"] .legend,
-  .app[data-sheet-state="full"] .legend {
-    transform: translateY(140%);
-    opacity: 0;
-    pointer-events: none;
-  }
 
-  /* Edit banner — pull below top bar */
   .edit-banner {
-    top: 8px;
+    top: max(8px, calc(env(safe-area-inset-top) + 60px));
     font-size: 11px;
     padding: 7px 14px;
     max-width: calc(100vw - 32px);
     line-height: 1.3;
   }
 
-  /* === Bottom sheet === */
-  .m-sheet {
+  /* === Elevation strip: inline below the map === */
+  .scrub {
+    grid-area: unset;
+    position: relative;
+    width: 100%;
+    bottom: auto;
+    padding: 10px 14px 8px;
+    background: var(--paper);
+    border-top: none;
+    border-bottom: 1px solid var(--paper-edge);
+  }
+  .scrub-head { font-size: 9px; letter-spacing: 0.12em; }
+  .scrub-head b { font-size: 9.5px; }
+  .elev-svg { height: 90px; }
+
+  /* === Inline overview: the rest of the homepage, below the map/elev === */
+  .m-inline-overview {
+    background: var(--paper);
+  }
+  .m-inline-overview .panel {
+    position: static;
+    grid-area: unset;
+    display: flex !important;
+    flex-direction: column;
+    background: var(--paper);
+    border-left: none;
+    border-right: none;
+    overflow: visible;
+  }
+  /* On the homepage inline view, the panel is always in "all" mode — hide
+     the back-button just in case. */
+  .m-inline-overview .panel-back { display: none; }
+  .m-inline-overview .panel-section { padding: 22px 18px; }
+
+  /* The full-size right-rail desktop panel is never used on mobile. */
+  .panel { display: none !important; }
+
+  /* === Detail sheet — modal overlay shown when something is selected === */
+  .m-detail-backdrop {
+    position: fixed;
+    inset: 0;
+    background: oklch(0 0 0 / 0.32);
+    z-index: 70;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: auto;
+  }
+  .m-detail-backdrop.open { opacity: 1; }
+
+  .m-detail-sheet {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
+    height: min(86vh, 86dvh);
     background: var(--paper-deep);
     border-top-left-radius: 18px;
     border-top-right-radius: 18px;
-    box-shadow: 0 -10px 32px oklch(0 0 0 / 0.16);
-    z-index: 50;
+    box-shadow: 0 -14px 36px oklch(0 0 0 / 0.22);
+    z-index: 75;
     display: flex;
     flex-direction: column;
-    height: 92vh;
-    height: 92dvh;
-    transform: translateY(calc(100% - 110px));
+    transform: translateY(100%);
     transition: transform 0.34s cubic-bezier(0.32, 0.72, 0.18, 1);
     will-change: transform;
-    touch-action: none;
   }
-  .m-sheet.dragging { transition: none; }
-  .m-sheet[data-state="peek"] { transform: translateY(calc(100% - 110px)); }
-  .m-sheet[data-state="mid"]  { transform: translateY(48%); }
-  .m-sheet[data-state="full"] { transform: translateY(0); }
+  .m-detail-sheet.open { transform: translateY(0); }
 
-  .m-sheet-handle {
-    flex-shrink: 0;
-    background: transparent;
-    border: 0;
-    width: 100%;
-    padding: 10px 0 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: grab;
-    touch-action: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .m-sheet-handle:active { cursor: grabbing; }
-  .m-sheet-handle-bar {
-    display: block;
+  .m-detail-sheet-handle {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 40px;
     height: 4px;
     background: var(--ink-faint);
     opacity: 0.4;
     border-radius: 2px;
-    transition: opacity 0.15s, width 0.15s;
+    pointer-events: none;
   }
-  .m-sheet-handle:hover .m-sheet-handle-bar { opacity: 0.7; }
 
-  .m-sheet-peek-wrap { flex-shrink: 0; touch-action: none; }
-  .m-sheet-peek {
-    padding: 2px 18px 14px;
-    border-bottom: 1px solid var(--paper-edge);
+  .m-detail-sheet-head {
+    flex-shrink: 0;
+    padding: 22px 16px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 14px;
-    min-height: 64px;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
+    gap: 12px;
+    border-bottom: 1px solid var(--paper-edge);
+    background: var(--paper-deep);
   }
-  .m-sheet-peek-l {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-    flex: 1;
-  }
-  .m-sheet-peek-eyebrow {
+  .m-detail-sheet-eyebrow {
     font-family: var(--mono);
     font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .m-sheet-peek-title {
-    font-family: var(--serif);
-    font-size: 22px;
-    line-height: 1.1;
-    color: var(--ink);
-    letter-spacing: -0.01em;
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .m-sheet-peek-title em { font-style: italic; color: var(--terracotta); }
-  .m-sheet-peek-r {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 4px;
-    font-family: var(--mono);
-    font-size: 10.5px;
+  .m-detail-sheet-close {
+    appearance: none;
+    border: 1px solid var(--paper-edge);
+    background: var(--paper);
     color: var(--ink-soft);
-    white-space: nowrap;
+    width: 36px;
+    height: 36px;
+    border-radius: 100px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
     flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .m-sheet-peek-r b {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-style: normal;
-    font-size: 22px;
-    color: var(--ink);
-    line-height: 1;
-    margin-right: 2px;
-  }
-  .m-sheet-peek-r span {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--terracotta);
-    letter-spacing: 0.06em;
-    font-weight: 600;
-    text-transform: lowercase;
-  }
-  .m-sheet-peek-caret {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--ink-faint);
-    margin-top: 0;
-    letter-spacing: 0;
+  .m-detail-sheet-close:hover,
+  .m-detail-sheet-close:active {
+    background: var(--terracotta);
+    color: var(--paper);
+    border-color: var(--terracotta-dp);
   }
 
-  .m-sheet-body {
+  .m-detail-sheet-body {
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
-    touch-action: pan-y;
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  /* Disable body scroll when sheet is in peek — content not visible anyway */
-  .m-sheet[data-state="peek"] .m-sheet-body { overflow: hidden; }
-
-  /* Render the inner Panel content inline (it's already inside the sheet) */
-  .m-sheet-body .panel {
+  .m-detail-sheet-body .panel {
     position: static;
     display: flex !important;
     flex-direction: column;
@@ -1448,40 +1447,11 @@ om-tweaks-panel { z-index: 100; }
     border: none;
     overflow: visible;
   }
-  .m-sheet-body .panel-section { padding: 18px 18px; }
-  .m-sheet-body .panel-title { font-size: 26px; }
+  .m-detail-sheet-body .panel-section { padding: 18px 18px; }
+  .m-detail-sheet-body .panel-title { font-size: 26px; }
 
-  /* === Elevation strip: pinned above sheet's peek, hides on mid/full === */
-  .scrub {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(110px + env(safe-area-inset-bottom));
-    grid-area: unset;
-    padding: 6px 12px 4px;
-    background: oklch(0.955 0.012 75 / 0.94);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-top: 1px solid var(--paper-edge);
-    border-bottom: 1px solid var(--paper-edge);
-    z-index: 40;
-    transition: transform 0.32s cubic-bezier(0.32, 0.72, 0.18, 1),
-                opacity 0.25s,
-                bottom 0.32s cubic-bezier(0.32, 0.72, 0.18, 1);
-  }
-  .scrub-head {
-    font-size: 9px;
-    letter-spacing: 0.12em;
-  }
-  .scrub-head b { font-size: 9.5px; }
-  .elev-svg { height: 78px; }
-
-  .app[data-sheet-state="mid"] .scrub,
-  .app[data-sheet-state="full"] .scrub {
-    transform: translateY(180%);
-    opacity: 0;
-    pointer-events: none;
-  }
+  /* Lock background scroll when sheet is open */
+  body.m-sheet-open { overflow: hidden; }
 
   /* === Touch targets in panel content === */
   .itin-row {
@@ -1527,12 +1497,12 @@ om-tweaks-panel { z-index: 100; }
     min-height: 38px;
   }
 
-  /* Photo + notes stack on mobile (no longer side-by-side) */
+  /* Photo + notes stack on mobile */
   .camp-extras { grid-template-columns: 1fr; gap: 10px; }
   .photo-slot { height: 140px; }
   .notes-input { min-height: 80px; }
 
-  /* Weather card — slightly bigger touch padding */
+  /* Weather card */
   .wx-card { padding: 14px; }
   .wx-hi { font-size: 32px; }
   .wx-lo { font-size: 18px; }
@@ -1540,7 +1510,7 @@ om-tweaks-panel { z-index: 100; }
   /* Mini elevation chart inside day overview */
   .mini-elev-wrap { margin: 12px -2px 0; }
 
-  /* === Tweaks panel — move out of bottom-right (sheet covers it) === */
+  /* === Tweaks panel — out of the way of the sheet === */
   om-tweaks-panel .twk-panel,
   .twk-panel {
     right: 10px !important;
@@ -1556,6 +1526,4 @@ om-tweaks-panel { z-index: 100; }
 @media (max-width: 380px) {
   .m-topbar-stats { display: none; }
   .m-topbar-mark { font-size: 19px; }
-  .m-sheet-peek-title { font-size: 20px; }
-  .m-sheet-peek-r b { font-size: 20px; }
 }

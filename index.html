@@ -101,7 +101,6 @@ function applyPalette(name) {
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const isMobile = useIsMobile();
-  const [sheetState, setSheetState] = useState("peek"); // peek | mid | full
 
   const [activeDay, setActiveDay] = useState("all"); // "all" | 1-5
   const [activeNode, setActiveNode] = useState(null);
@@ -138,11 +137,19 @@ function App() {
   useEffect(() => { applyPalette(t.palette); }, [t.palette]);
 
   const handleNodeClick = (id) => {
+    const n = nodeById[id];
+    // Camps with a `nights` field are tied to a day — clicking one opens that
+    // day's overview (which now also holds the camp's memory), not a separate page.
+    if (n && n.type === "camp" && Array.isArray(n.nights) && n.nights.length) {
+      const dayForCamp = n.nights[0];
+      setActiveDay(dayForCamp);
+      setActiveNode(null);
+      setActiveSeg(null);
+      return;
+    }
     const nextNode = id === activeNode ? null : id;
     setActiveNode(nextNode);
     setActiveSeg(null);
-    // On mobile, auto-raise the sheet to mid when a new selection is made
-    if (isMobile && nextNode && sheetState === "peek") setSheetState("mid");
   };
   const handleSegClick = (id) => {
     const nextSeg = id === activeSeg ? null : id;
@@ -150,7 +157,6 @@ function App() {
     setActiveNode(null);
     const seg = D.segments.find(s => s.id === id);
     if (seg) setActiveDay(seg.day);
-    if (isMobile && nextSeg && sheetState === "peek") setSheetState("mid");
   };
   const handleDayClick = (d) => {
     setActiveDay(d);
@@ -168,7 +174,7 @@ function App() {
   };
 
   return (
-    <div className="app" data-sheet-state={isMobile ? sheetState : undefined}>
+    <div className="app" data-mobile={isMobile ? "1" : undefined}>
       {isMobile && <MobileTopBar />}
       <header className="header">
         <div className="brand">
@@ -259,27 +265,55 @@ function App() {
       )}
 
       {isMobile ? (
-        <MobileSheet
-          state={sheetState}
-          setState={setSheetState}
-          peek={<MobilePeek activeDay={activeDay} activeNode={activeNode} activeSeg={activeSeg} state={sheetState} />}
-        >
-          <Panel
-            activeNode={activeNode}
-            activeSeg={activeSeg}
-            activeDay={activeDay}
-            photos={photos} setPhotos={setPhotos}
-            notes={notes} setNotes={setNotes}
-            gearChecked={gearChecked} setGearChecked={setGearChecked}
-            onSegClick={handleSegClick}
-            onDayClick={(d) => { handleDayClick(d); if (sheetState === "peek") setSheetState("mid"); }}
-            onReset={(opts) => {
+        <>
+          {/* Inline overview below the map — the mobile homepage scroll content. */}
+          <div className="m-inline-overview">
+            <Panel
+              activeNode={null}
+              activeSeg={null}
+              activeDay="all"
+              photos={photos} setPhotos={setPhotos}
+              notes={notes} setNotes={setNotes}
+              gearChecked={gearChecked} setGearChecked={setGearChecked}
+              onSegClick={handleSegClick}
+              onDayClick={handleDayClick}
+              onReset={() => {}}
+            />
+          </div>
+
+          {/* Detail sheet — opens when user picks something on the map or in the itinerary.
+              Slides up over the map; tap X (or backdrop) returns to the map view. */}
+          <MobileDetailSheet
+            open={!!(activeNode || activeSeg || (activeDay !== "all" && activeDay != null))}
+            onClose={() => {
               setActiveNode(null);
               setActiveSeg(null);
-              if (!opts || !opts.keepDay) setActiveDay("all");
+              setActiveDay("all");
             }}
-          />
-        </MobileSheet>
+            title={
+              activeNode ? (nodeById[activeNode]?.type || "Detail")
+              : activeSeg ? `Day ${(D.segments.find(s => s.id === activeSeg) || {}).day} · Segment`
+              : (activeDay !== "all" && activeDay != null) ? `Day ${activeDay} · ${(D.days.find(d => d.day === activeDay) || {}).date || ""}`
+              : ""
+            }
+          >
+            <Panel
+              activeNode={activeNode}
+              activeSeg={activeSeg}
+              activeDay={activeDay}
+              photos={photos} setPhotos={setPhotos}
+              notes={notes} setNotes={setNotes}
+              gearChecked={gearChecked} setGearChecked={setGearChecked}
+              onSegClick={handleSegClick}
+              onDayClick={handleDayClick}
+              onReset={(opts) => {
+                setActiveNode(null);
+                setActiveSeg(null);
+                if (!opts || !opts.keepDay) setActiveDay("all");
+              }}
+            />
+          </MobileDetailSheet>
+        </>
       ) : (
         <Panel
           activeNode={activeNode}

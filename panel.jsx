@@ -34,7 +34,7 @@ function Panel({ activeNode, activeSeg, activeDay, photos, setPhotos, notes, set
         </button>
       )}
       {mode === "all" && <AllOverview onDayClick={onDayClick} />}
-      {mode === "day" && <DayOverview day={dayData} onSegClick={onSegClick} activeSeg={activeSeg} gearChecked={gearChecked} setGearChecked={setGearChecked} />}
+      {mode === "day" && <DayOverview day={dayData} onSegClick={onSegClick} activeSeg={activeSeg} gearChecked={gearChecked} setGearChecked={setGearChecked} photos={photos} setPhotos={setPhotos} notes={notes} setNotes={setNotes} />}
       {mode === "seg" && <SegDetail seg={seg} />}
       {mode === "node" && (
         <NodeDetail
@@ -110,10 +110,23 @@ function Stat({ n, l, color }) {
   );
 }
 
-function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked }) {
+function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked, photos, setPhotos, notes, setNotes }) {
   const segs = D.segments.filter(s => s.day === day.day);
   const totalGain = segs.reduce((s, x) => s + x.gain, 0);
   const totalLoss = segs.reduce((s, x) => s + x.loss, 0);
+  // Find the camp this day ends at (the night-camp). Memory + photo live on the camp's id.
+  const nightCamp = D.nodes.find(n => n.type === "camp" && Array.isArray(n.nights) && n.nights.includes(day.day));
+  const campId = nightCamp ? nightCamp.id : null;
+  const memPhoto = campId && photos ? photos[campId] : null;
+  const memNote = campId && notes ? (notes[campId] || "") : "";
+  const onPhotoChange = (e) => {
+    if (!campId || !setPhotos) return;
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = (ev) => setPhotos({ ...photos, [campId]: ev.target.result });
+    r.readAsDataURL(f);
+  };
   return (
     <>
       <div className="panel-section">
@@ -181,6 +194,25 @@ function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked }
           })}
         </div>
       </div>
+
+      {nightCamp && setPhotos && setNotes && (
+        <div className="panel-section">
+          <div className="panel-eyebrow">Memory · night at {nightCamp.label}</div>
+          <div className="camp-extras">
+            <label className="photo-slot">
+              {memPhoto ? <img src={memPhoto} alt="" /> : <span>Drop photo</span>}
+              <input type="file" accept="image/*" onChange={onPhotoChange} />
+            </label>
+            <textarea
+              className="notes-input"
+              value={memNote}
+              onChange={e => setNotes({ ...notes, [campId]: e.target.value })}
+              placeholder={`Notes from ${nightCamp.label}…`}
+              rows={5}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
