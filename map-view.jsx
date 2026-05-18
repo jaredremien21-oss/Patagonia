@@ -6,7 +6,8 @@ function MapView({ activeDay, activeNode, activeSeg, hoverSeg, walkProgress, edi
   const mapRef = useRefM(null);
   const layersRef = useRefM({ segs: {}, segLabels: {}, nodes: {}, walker: null });
   const [legendOpen, setLegendOpen] = useStateMV(() => {
-    try { return localStorage.getItem('wtrek-legend-open') !== '0'; } catch { return true; }
+    // Default: collapsed. Honor an explicit '1' if the user has expanded it before.
+    try { return localStorage.getItem('wtrek-legend-open') === '1'; } catch { return false; }
   });
   const toggleLegend = () => setLegendOpen(v => {
     const next = !v;

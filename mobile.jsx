@@ -47,76 +47,35 @@ function MobileTopBar() {
 }
 window.MobileTopBar = MobileTopBar;
 
-/* === Detail sheet — modal overlay that pops up when the user selects
-   something on the map or taps an itinerary row.
-   - Slides up from bottom
-   - Has a close button that calls onClose()
-   - Locks body scroll while open
-   - Closes on backdrop tap
+/* === Detail page — a FULL-SCREEN page that replaces the landing view
+   when the user picks a day / segment / non-night node.
+   Not a modal: the page just scrolls. A sticky "← Back to map" bar at
+   the top returns the user to the landing screen.
 === */
-function MobileDetailSheet({ open, onClose, title, children }) {
-  // Animate mount/unmount
-  const [shouldRender, setShouldRender] = useStateMo(open);
-  const [isAnimatedOpen, setIsAnimatedOpen] = useStateMo(false);
-
+function MobileDetailPage({ onClose, title, children }) {
+  // Scroll the new page to the top on mount so the user lands on the title.
   useEffectMo(() => {
-    if (open) {
-      setShouldRender(true);
-      // Next tick: trigger the open class so transform animates
-      const id = requestAnimationFrame(() => setIsAnimatedOpen(true));
-      return () => cancelAnimationFrame(id);
-    } else {
-      setIsAnimatedOpen(false);
-      // Wait for transition before unmount
-      const t = setTimeout(() => setShouldRender(false), 340);
-      return () => clearTimeout(t);
-    }
-  }, [open]);
-
-  // Lock body scroll
-  useEffectMo(() => {
-    if (open) {
-      document.body.classList.add("m-sheet-open");
-    } else {
-      document.body.classList.remove("m-sheet-open");
-    }
-    return () => document.body.classList.remove("m-sheet-open");
-  }, [open]);
-
-  if (!shouldRender) return null;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   return (
-    <>
-      <div
-        className={`m-detail-backdrop ${isAnimatedOpen ? "open" : ""}`}
-        onClick={onClose}
-        aria-hidden="true"
-      ></div>
-      <div
-        className={`m-detail-sheet ${isAnimatedOpen ? "open" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title || "Detail"}
-      >
-        <div className="m-detail-sheet-handle" aria-hidden="true"></div>
-        <div className="m-detail-sheet-head">
-          <span className="m-detail-sheet-eyebrow">{title || ""}</span>
-          <button
-            type="button"
-            className="m-detail-sheet-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-              <path d="M2 2 L12 12 M12 2 L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" />
-            </svg>
-          </button>
-        </div>
-        <div className="m-detail-sheet-body">
-          {children}
-        </div>
+    <section className="m-detail-page">
+      <div className="m-detail-back-bar">
+        <button
+          type="button"
+          className="m-detail-back"
+          onClick={onClose}
+          aria-label="Back to map"
+        >
+          <span className="m-detail-back-arrow" aria-hidden="true">←</span>
+          <span className="m-detail-back-lbl">Back to map</span>
+        </button>
+        {title && <span className="m-detail-back-title">{title}</span>}
       </div>
-    </>
+      <div className="m-detail-page-body">
+        {children}
+      </div>
+    </section>
   );
 }
-window.MobileDetailSheet = MobileDetailSheet;
+window.MobileDetailPage = MobileDetailPage;

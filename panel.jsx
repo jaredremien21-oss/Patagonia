@@ -34,7 +34,7 @@ function Panel({ activeNode, activeSeg, activeDay, photos, setPhotos, notes, set
         </button>
       )}
       {mode === "all" && <AllOverview onDayClick={onDayClick} />}
-      {mode === "day" && <DayOverview day={dayData} onSegClick={onSegClick} activeSeg={activeSeg} gearChecked={gearChecked} setGearChecked={setGearChecked} photos={photos} setPhotos={setPhotos} notes={notes} setNotes={setNotes} />}
+      {mode === "day" && <DayOverview day={dayData} onSegClick={onSegClick} activeSeg={activeSeg} gearChecked={gearChecked} setGearChecked={setGearChecked} photos={photos} setPhotos={setPhotos} notes={notes} setNotes={setNotes} onDayClick={onDayClick} />}
       {mode === "seg" && <SegDetail seg={seg} />}
       {mode === "node" && (
         <NodeDetail
@@ -110,7 +110,7 @@ function Stat({ n, l, color }) {
   );
 }
 
-function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked, photos, setPhotos, notes, setNotes }) {
+function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked, photos, setPhotos, notes, setNotes, onDayClick }) {
   const segs = D.segments.filter(s => s.day === day.day);
   const totalGain = segs.reduce((s, x) => s + x.gain, 0);
   const totalLoss = segs.reduce((s, x) => s + x.loss, 0);
@@ -127,6 +127,13 @@ function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked, 
     r.onload = (ev) => setPhotos({ ...photos, [campId]: ev.target.result });
     r.readAsDataURL(f);
   };
+
+  // Prev / next day navigation
+  const totalDays = D.days.length;
+  const hasPrev = day.day > 1;
+  const hasNext = day.day < totalDays;
+  const prevDay = hasPrev ? D.days.find(d => d.day === day.day - 1) : null;
+  const nextDay = hasNext ? D.days.find(d => d.day === day.day + 1) : null;
   return (
     <>
       <div className="panel-section">
@@ -145,6 +152,34 @@ function DayOverview({ day, onSegClick, activeSeg, gearChecked, setGearChecked, 
           <span><span className={`diff-pill diff-${day.difficulty.toLowerCase()}`}>{day.difficulty}</span></span>
         </div>
         <p className="panel-blurb">{day.blurb}</p>
+        <div className="day-nav">
+          <button
+            type="button"
+            className="day-nav-btn day-nav-prev"
+            disabled={!hasPrev}
+            onClick={() => hasPrev && onDayClick && onDayClick(day.day - 1)}
+            title={prevDay ? `Day ${prevDay.day} · ${prevDay.title}` : ""}
+          >
+            <span className="day-nav-arrow">←</span>
+            <span className="day-nav-lbl">
+              <span className="day-nav-num">{hasPrev ? `Day ${prevDay.day}` : "—"}</span>
+              {prevDay && <span className="day-nav-name">{prevDay.title}</span>}
+            </span>
+          </button>
+          <button
+            type="button"
+            className="day-nav-btn day-nav-next"
+            disabled={!hasNext}
+            onClick={() => hasNext && onDayClick && onDayClick(day.day + 1)}
+            title={nextDay ? `Day ${nextDay.day} · ${nextDay.title}` : ""}
+          >
+            <span className="day-nav-lbl">
+              <span className="day-nav-num">{hasNext ? `Day ${nextDay.day}` : "—"}</span>
+              {nextDay && <span className="day-nav-name">{nextDay.title}</span>}
+            </span>
+            <span className="day-nav-arrow">→</span>
+          </button>
+        </div>
         <MiniElevation day={day.day} />
       </div>
 

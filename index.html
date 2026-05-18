@@ -213,42 +213,49 @@ function App() {
         </div>
       </header>
 
-      <MapView
-        activeDay={activeDay}
-        activeNode={activeNode}
-        activeSeg={activeSeg}
-        hoverSeg={hoverSeg}
-        walkProgress={walkProgress}
-        editMode={editMode}
-        overrides={overrides}
-        onNodeMove={handleNodeMove}
-        onNodeClick={handleNodeClick}
-        onSegClick={handleSegClick}
-        onSegHover={setHoverSeg}
-      />
-
-      {t.showElevation ? (
-        <ElevationStrip
+      {/* On mobile, hide the map + elevation + inline overview when the user
+          drills into a detail. Detail mode replaces the landing screen with
+          a scrollable page that has a "Back to map" button at the top. */}
+      {(!isMobile || !(activeNode || activeSeg || (activeDay !== "all" && activeDay != null))) && (
+        <MapView
           activeDay={activeDay}
+          activeNode={activeNode}
+          activeSeg={activeSeg}
+          hoverSeg={hoverSeg}
           walkProgress={walkProgress}
-          onScrub={setWalkProgress}
-          onDayClick={handleDayClick}
-          show={true}
+          editMode={editMode}
+          overrides={overrides}
+          onNodeMove={handleNodeMove}
+          onNodeClick={handleNodeClick}
+          onSegClick={handleSegClick}
+          onSegHover={setHoverSeg}
         />
-      ) : (
-        <div className="scrub" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="day-chips">
-            <button className={`day-chip all ${activeDay === "all" ? "active" : ""}`} onClick={() => handleDayClick("all")}>All days</button>
-            {D.days.map(d => (
-              <button key={d.day} className={`day-chip ${activeDay === d.day ? "active" : ""}`} onClick={() => handleDayClick(d.day)}>
-                Day {d.day}
-              </button>
-            ))}
+      )}
+
+      {(!isMobile || !(activeNode || activeSeg || (activeDay !== "all" && activeDay != null))) && (
+        t.showElevation ? (
+          <ElevationStrip
+            activeDay={activeDay}
+            walkProgress={walkProgress}
+            onScrub={setWalkProgress}
+            onDayClick={handleDayClick}
+            show={true}
+          />
+        ) : (
+          <div className="scrub" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div className="day-chips">
+              <button className={`day-chip all ${activeDay === "all" ? "active" : ""}`} onClick={() => handleDayClick("all")}>All days</button>
+              {D.days.map(d => (
+                <button key={d.day} className={`day-chip ${activeDay === d.day ? "active" : ""}`} onClick={() => handleDayClick(d.day)}>
+                  Day {d.day}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              Elevation hidden
+            </div>
           </div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-            Elevation hidden
-          </div>
-        </div>
+        )
       )}
 
       {t.showElevation && false && (
@@ -265,35 +272,18 @@ function App() {
       )}
 
       {isMobile ? (
-        <>
-          {/* Inline overview below the map — the mobile homepage scroll content. */}
-          <div className="m-inline-overview">
-            <Panel
-              activeNode={null}
-              activeSeg={null}
-              activeDay="all"
-              photos={photos} setPhotos={setPhotos}
-              notes={notes} setNotes={setNotes}
-              gearChecked={gearChecked} setGearChecked={setGearChecked}
-              onSegClick={handleSegClick}
-              onDayClick={handleDayClick}
-              onReset={() => {}}
-            />
-          </div>
-
-          {/* Detail sheet — opens when user picks something on the map or in the itinerary.
-              Slides up over the map; tap X (or backdrop) returns to the map view. */}
-          <MobileDetailSheet
-            open={!!(activeNode || activeSeg || (activeDay !== "all" && activeDay != null))}
+        (activeNode || activeSeg || (activeDay !== "all" && activeDay != null)) ? (
+          /* Detail mode: full-page replacement of the landing screen. */
+          <MobileDetailPage
             onClose={() => {
               setActiveNode(null);
               setActiveSeg(null);
               setActiveDay("all");
             }}
             title={
-              activeNode ? (nodeById[activeNode]?.type || "Detail")
+              activeNode ? (nodeById[activeNode]?.label || "")
               : activeSeg ? `Day ${(D.segments.find(s => s.id === activeSeg) || {}).day} · Segment`
-              : (activeDay !== "all" && activeDay != null) ? `Day ${activeDay} · ${(D.days.find(d => d.day === activeDay) || {}).date || ""}`
+              : (activeDay !== "all" && activeDay != null) ? `Day ${activeDay}`
               : ""
             }
           >
@@ -312,8 +302,23 @@ function App() {
                 if (!opts || !opts.keepDay) setActiveDay("all");
               }}
             />
-          </MobileDetailSheet>
-        </>
+          </MobileDetailPage>
+        ) : (
+          /* Landing: inline overview below the map (which was rendered above). */
+          <div className="m-inline-overview">
+            <Panel
+              activeNode={null}
+              activeSeg={null}
+              activeDay="all"
+              photos={photos} setPhotos={setPhotos}
+              notes={notes} setNotes={setNotes}
+              gearChecked={gearChecked} setGearChecked={setGearChecked}
+              onSegClick={handleSegClick}
+              onDayClick={handleDayClick}
+              onReset={() => {}}
+            />
+          </div>
+        )
       ) : (
         <Panel
           activeNode={activeNode}

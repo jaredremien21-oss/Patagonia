@@ -1159,6 +1159,74 @@ button { font-family: inherit; cursor: pointer; }
 /* tweaks panel positioning */
 om-tweaks-panel { z-index: 100; }
 
+/* === Day prev/next navigation (used on both desktop + mobile) === */
+.day-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 16px 0 8px;
+}
+.day-nav-btn {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  border-radius: 6px;
+  color: var(--ink);
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  min-height: 52px;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.day-nav-btn:hover:not(:disabled) {
+  background: var(--paper-deep);
+  border-color: var(--terracotta);
+}
+.day-nav-btn:active:not(:disabled) { transform: translateY(1px); }
+.day-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: transparent;
+}
+.day-nav-next { justify-content: flex-end; text-align: right; }
+.day-nav-arrow {
+  font-family: var(--serif);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--terracotta);
+  flex-shrink: 0;
+}
+.day-nav-btn:disabled .day-nav-arrow { color: var(--ink-faint); }
+.day-nav-lbl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.day-nav-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+.day-nav-name {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.day-nav-btn:disabled .day-nav-name { display: none; }
+
 /* ==========================================================================
    Mobile (≤ 768px)
    - Page becomes a vertical scroll: top bar / map / elevation / inline overview
@@ -1346,112 +1414,91 @@ om-tweaks-panel { z-index: 100; }
   /* The full-size right-rail desktop panel is never used on mobile. */
   .panel { display: none !important; }
 
-  /* === Detail sheet — modal overlay shown when something is selected === */
-  .m-detail-backdrop {
-    position: fixed;
-    inset: 0;
-    background: oklch(0 0 0 / 0.32);
-    z-index: 70;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: auto;
+  /* === Detail page — full-page replacement of the landing view ===
+     Not a modal: the page just scrolls. A sticky "Back to map" bar at
+     the top is the only way back. */
+  .m-detail-page {
+    display: block;
+    background: var(--paper);
+    min-height: calc(100vh - 60px);
+    min-height: calc(100dvh - 60px);
+    width: 100%;
   }
-  .m-detail-backdrop.open { opacity: 1; }
-
-  .m-detail-sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: min(86vh, 86dvh);
-    background: var(--paper-deep);
-    border-top-left-radius: 18px;
-    border-top-right-radius: 18px;
-    box-shadow: 0 -14px 36px oklch(0 0 0 / 0.22);
-    z-index: 75;
-    display: flex;
-    flex-direction: column;
-    transform: translateY(100%);
-    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0.18, 1);
-    will-change: transform;
-  }
-  .m-detail-sheet.open { transform: translateY(0); }
-
-  .m-detail-sheet-handle {
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 40px;
-    height: 4px;
-    background: var(--ink-faint);
-    opacity: 0.4;
-    border-radius: 2px;
-    pointer-events: none;
-  }
-
-  .m-detail-sheet-head {
-    flex-shrink: 0;
-    padding: 22px 16px 12px;
+  .m-detail-back-bar {
+    position: sticky;
+    top: calc(58px + env(safe-area-inset-top));
+    z-index: 20;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
+    padding: 10px 14px;
+    background: oklch(0.955 0.012 75 / 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--paper-edge);
-    background: var(--paper-deep);
   }
-  .m-detail-sheet-eyebrow {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .m-detail-sheet-close {
+  .m-detail-back {
     appearance: none;
-    border: 1px solid var(--paper-edge);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 10px;
     background: var(--paper);
-    color: var(--ink-soft);
-    width: 36px;
-    height: 36px;
+    border: 1px solid var(--paper-edge);
     border-radius: 100px;
-    display: grid;
-    place-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.10em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
     cursor: pointer;
+    min-height: 38px;
+    font-weight: 600;
     flex-shrink: 0;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
   }
-  .m-detail-sheet-close:hover,
-  .m-detail-sheet-close:active {
+  .m-detail-back:hover,
+  .m-detail-back:active {
     background: var(--terracotta);
     color: var(--paper);
     border-color: var(--terracotta-dp);
   }
-
-  .m-detail-sheet-body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    padding-bottom: env(safe-area-inset-bottom);
+  .m-detail-back-arrow {
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1;
+    letter-spacing: 0;
   }
-  .m-detail-sheet-body .panel {
+  .m-detail-back-title {
+    font-family: var(--serif);
+    font-size: 16px;
+    color: var(--ink);
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+  .m-detail-page-body {
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  }
+  .m-detail-page-body .panel {
     position: static;
     display: flex !important;
     flex-direction: column;
-    background: transparent;
+    background: var(--paper);
     border: none;
     overflow: visible;
   }
-  .m-detail-sheet-body .panel-section { padding: 18px 18px; }
-  .m-detail-sheet-body .panel-title { font-size: 26px; }
+  .m-detail-page-body .panel-section { padding: 20px 18px; }
+  .m-detail-page-body .panel-title { font-size: 28px; }
+  /* The in-panel back button is redundant on mobile — the top bar handles it
+     for full back navigation. Keep it for sub-page nav (seg → day). */
 
-  /* Lock background scroll when sheet is open */
-  body.m-sheet-open { overflow: hidden; }
+  /* Day nav buttons: keep both side-by-side on mobile too but allow them to
+     wrap label tightly. */
+  .day-nav-num { font-size: 9.5px; }
+  .day-nav-name { font-size: 14px; }
 
   /* === Touch targets in panel content === */
   .itin-row {
