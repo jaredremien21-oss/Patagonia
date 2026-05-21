@@ -1415,24 +1415,39 @@ om-tweaks-panel { z-index: 100; }
   .panel { display: none !important; }
 
   /* === Detail page — full-page replacement of the landing view ===
-     Not a modal: the page just scrolls. A sticky "Back to map" bar at
-     the top is the only way back. */
+     The map / elevation strip / inline overview are unmounted by React when
+     a detail is opened on mobile. Force-hide them via CSS too as a defensive
+     guard against any leaflet leftovers, browser caches, or transient state. */
+  .app[data-detail="1"] .map,
+  .app[data-detail="1"] .scrub,
+  .app[data-detail="1"] .m-inline-overview,
+  .app[data-detail="1"] .leaflet-container,
+  .app[data-detail="1"] .leaflet-pane,
+  .app[data-detail="1"] .leaflet-control-container,
+  .app[data-detail="1"] .legend,
+  .app[data-detail="1"] .edit-banner {
+    display: none !important;
+  }
+  /* In detail mode there's no MobileTopBar — the back-bar IS the top bar. */
   .m-detail-page {
     display: block;
     background: var(--paper);
-    min-height: calc(100vh - 60px);
-    min-height: calc(100dvh - 60px);
+    min-height: 100vh;
+    min-height: 100dvh;
     width: 100%;
   }
   .m-detail-back-bar {
     position: sticky;
-    top: calc(58px + env(safe-area-inset-top));
-    z-index: 20;
+    top: 0;
+    z-index: 30;
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
-    background: oklch(0.955 0.012 75 / 0.95);
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+    background: oklch(0.955 0.012 75 / 0.96);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--paper-edge);
@@ -1471,7 +1486,7 @@ om-tweaks-panel { z-index: 100; }
   }
   .m-detail-back-title {
     font-family: var(--serif);
-    font-size: 16px;
+    font-size: 17px;
     color: var(--ink);
     line-height: 1.1;
     overflow: hidden;
@@ -1492,11 +1507,8 @@ om-tweaks-panel { z-index: 100; }
   }
   .m-detail-page-body .panel-section { padding: 20px 18px; }
   .m-detail-page-body .panel-title { font-size: 28px; }
-  /* The in-panel back button is redundant on mobile — the top bar handles it
-     for full back navigation. Keep it for sub-page nav (seg → day). */
 
-  /* Day nav buttons: keep both side-by-side on mobile too but allow them to
-     wrap label tightly. */
+  /* Day nav buttons */
   .day-nav-num { font-size: 9.5px; }
   .day-nav-name { font-size: 14px; }
 

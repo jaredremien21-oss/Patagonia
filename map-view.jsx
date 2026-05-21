@@ -5,13 +5,15 @@ function MapView({ activeDay, activeNode, activeSeg, hoverSeg, walkProgress, edi
   const mapElRef = useRefM(null);
   const mapRef = useRefM(null);
   const layersRef = useRefM({ segs: {}, segLabels: {}, nodes: {}, walker: null });
+  // Legend starts collapsed by default. We use a fresh storage key (v2) so
+  // values left over from earlier deploys, where the legend defaulted to
+  // open, don't sneak through as "expanded".
   const [legendOpen, setLegendOpen] = useStateMV(() => {
-    // Default: collapsed. Honor an explicit '1' if the user has expanded it before.
-    try { return localStorage.getItem('wtrek-legend-open') === '1'; } catch { return false; }
+    try { return localStorage.getItem('wtrek-legend-open-v2') === '1'; } catch { return false; }
   });
   const toggleLegend = () => setLegendOpen(v => {
     const next = !v;
-    try { localStorage.setItem('wtrek-legend-open', next ? '1' : '0'); } catch {}
+    try { localStorage.setItem('wtrek-legend-open-v2', next ? '1' : '0'); } catch {}
     return next;
   });
 

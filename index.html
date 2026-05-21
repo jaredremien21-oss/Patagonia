@@ -174,8 +174,8 @@ function App() {
   };
 
   return (
-    <div className="app" data-mobile={isMobile ? "1" : undefined}>
-      {isMobile && <MobileTopBar />}
+    <div className="app" data-mobile={isMobile ? "1" : undefined} data-detail={isMobile && (activeNode || activeSeg || (activeDay !== "all" && activeDay != null)) ? "1" : undefined}>
+      {isMobile && !(activeNode || activeSeg || (activeDay !== "all" && activeDay != null)) && <MobileTopBar />}
       <header className="header">
         <div className="brand">
           <svg className="brand-logo" viewBox="0 0 56 44" aria-hidden="true">
